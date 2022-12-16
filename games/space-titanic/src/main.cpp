@@ -161,10 +161,15 @@ inline void music_stop()
         bn::music::stop();
 }
 
+const int D_STOP = 0;
 const int D_LEFT = 1;
 const int D_RIGHT = 2;
 const int D_UP = 3;
 const int D_DOWN = 4;
+const int D_UP_LEFT = 5;
+const int D_UP_RIGHT = 6;
+const int D_DOWN_LEFT = 7;
+const int D_DOWN_RIGHT = 8;
 
 const int LUNA = 0;
 const int XYLIA = 13;
@@ -421,7 +426,9 @@ int linear_gameplay()
     bool indicate = false;
     int pros_x = current_room.start_x;
     int pros_y = current_room.start_y;
-    int freefall = 0;
+    int freefall_x = D_STOP;  // Left/right + stop
+    int freefall_y = D_STOP;  // Up/down + stop
+    int freefall = D_STOP;  // Eight directions + stop
     int rotate = 90;
     int dead = 0;
     int orientation = 0;
@@ -635,10 +642,19 @@ int linear_gameplay()
         }
 
         // Handle barrels
+        freefall_x = (((freefall == D_LEFT) || (freefall == D_UP_LEFT) || (freefall == D_DOWN_LEFT))
+                      ? D_LEFT
+                      : ((freefall == D_RIGHT) || (freefall == D_UP_RIGHT) || (freefall == D_DOWN_RIGHT))
+                      ? D_RIGHT
+                      : D_STOP);
+        freefall_y = (((freefall == D_UP) || (freefall == D_UP_LEFT) || (freefall == D_UP_RIGHT))
+                      ? D_UP
+                      : ((freefall == D_DOWN) || (freefall == D_DOWN_LEFT) || (freefall == D_DOWN_RIGHT))
+                      ? D_DOWN
+                      : D_STOP);
         for (int i = 0; i < sprites_b.size(); i++)
         {
-            if (sprites_b.at(i).sprite.y().integer() == pros_y)
-            {
+            if (sprites_b.at(i).sprite.y().integer() == pros_y) {
                 if (sprites_b.at(i).sprite.x().integer() == pros_x - 16)
                 {
                     switch (sprites_b.at(i).type)
@@ -660,21 +676,14 @@ int linear_gameplay()
                     {
                         if (sprites_b.at(i).type == 0)
                         {
-                            freefall = D_RIGHT;
+	                        freefall_x = (freefall_x == D_LEFT) ? D_STOP : D_RIGHT;
                             bn::sound_items::box_01.play(0.5);
                             chari_sound(global->chari_offset, 1);
-                            if (!current_room.gravity)
-                            {
-                                sprites_b.at(i).push(-2, 0);
-                            }
                         }
-                        else
-                        {
-                            sprites_b.at(i).push(-2, 0);
-                        }
+                        sprites_b.at(i).push(-2, 0);
                     }
                 }
-                else if (sprites_b.at(i).sprite.x().integer() == pros_x + 16)
+                if (sprites_b.at(i).sprite.x().integer() == pros_x + 16)
                 {
                     switch (sprites_b.at(i).type)
                     {
@@ -694,23 +703,16 @@ int linear_gameplay()
                     {
                         if (sprites_b.at(i).type == 0)
                         {
-                            freefall = D_LEFT;
+                            freefall_x = (freefall_x == D_RIGHT) ? D_STOP : D_LEFT;
                             bn::sound_items::box_01.play(0.5);
                             chari_sound(global->chari_offset, 1);
-                            if (!current_room.gravity)
-                            {
-                                sprites_b.at(i).push(2, 0);
-                            }
                         }
-                        else
-                        {
-                            sprites_b.at(i).push(2, 0);
-                        }
+                        sprites_b.at(i).push(2, 0);
                     }
                 }
             }
-            else if (sprites_b.at(i).sprite.x().integer() == pros_x)
-            {
+            if (sprites_b.at(i).sprite.x().integer() == pros_x)
+	        {
                 if (sprites_b.at(i).sprite.y().integer() == pros_y - 16)
                 {
                     switch (sprites_b.at(i).type)
@@ -731,21 +733,14 @@ int linear_gameplay()
                     {
                         if (sprites_b.at(i).type == 0)
                         {
-                            freefall = D_DOWN;
+	                        freefall_y = (freefall_y == D_UP) ? D_STOP : D_DOWN;
                             bn::sound_items::box_01.play(0.5);
                             chari_sound(global->chari_offset, 1);
-                            if (!current_room.gravity)
-                            {
-                                sprites_b.at(i).push(0, -2);
-                            }
                         }
-                        else
-                        {
-                            sprites_b.at(i).push(0, -2);
-                        }
+                        sprites_b.at(i).push(0, -2);
                     }
                 }
-                else if (sprites_b.at(i).sprite.y().integer() == pros_y + 16)
+                if (sprites_b.at(i).sprite.y().integer() == pros_y + 16)
                 {
                     switch (sprites_b.at(i).type)
                     {
@@ -765,21 +760,14 @@ int linear_gameplay()
                     {
                         if (sprites_b.at(i).type == 0)
                         {
-                            freefall = D_UP;
+	                        freefall_y = (freefall_y == D_DOWN) ? D_STOP : D_UP;
                             bn::sound_items::box_01.play(0.5);
                             chari_sound(global->chari_offset, 1);
-                            if (!current_room.gravity)
-                            {
-                                sprites_b.at(i).push(0, 2);
-                            }
                         }
-                        else
-                        {
-                            sprites_b.at(i).push(0, 2);
-                        }
+                        sprites_b.at(i).push(0, 2);
                     }
                 }
-            }
+	        }
 
             // Is bullet?
             if (bullet.visible() && distance(sprites_b.at(i).sprite, bullet) < 8 && sprites_b.at(i).type == 2)
@@ -796,6 +784,24 @@ int linear_gameplay()
                 sprites_b.erase(&sprites_b.at(i));
             }
         }
+
+        freefall = ((freefall_x == D_LEFT)
+                    ? ((freefall_y == D_UP)
+                       ? D_UP_LEFT
+                       : (freefall_y == D_DOWN)
+                       ? D_DOWN_LEFT
+                       : D_LEFT)
+                    : (freefall_x == D_RIGHT)
+                    ? ((freefall_y == D_UP)
+                       ? D_UP_RIGHT
+                       : (freefall_y == D_DOWN)
+                       ? D_DOWN_RIGHT
+                       : D_RIGHT)
+                    : ((freefall_y == D_UP)
+                       ? D_UP
+                       : (freefall_y == D_DOWN)
+                       ? D_DOWN
+                       : freefall));
 
         // Handle buttons
         if (boss_battle)
@@ -1422,7 +1428,7 @@ int linear_gameplay()
 
                             // No current_room.gravity, but stable
                         }
-                        else if (freefall == 0)
+                        else if (freefall == D_STOP)
                         {
 
                             int is_held = 0;
@@ -1544,7 +1550,7 @@ int linear_gameplay()
                                 }
                                 else
                                 {
-                                    freefall = 0;
+                                    freefall = D_STOP;
                                     rotate = 0;
                                     bn::sound_items::box_01.play(0.5);
                                 }
@@ -1563,7 +1569,7 @@ int linear_gameplay()
                                 }
                                 else
                                 {
-                                    freefall = 0;
+                                    freefall = D_STOP;
                                     rotate = 180;
                                     bn::sound_items::box_01.play(0.5);
                                 }
@@ -1582,7 +1588,7 @@ int linear_gameplay()
                                 }
                                 else
                                 {
-                                    freefall = 0;
+                                    freefall = D_STOP;
                                     rotate = 270;
                                     bn::sound_items::box_01.play(0.5);
                                 }
@@ -1601,7 +1607,87 @@ int linear_gameplay()
                                 }
                                 else
                                 {
-                                    freefall = 0;
+                                    freefall = D_STOP;
+                                    rotate = 90;
+                                    bn::sound_items::box_01.play(0.5);
+                                }
+                            }
+                        }
+                        else if (freefall == D_UP_LEFT)
+                        {
+                            action = bn::create_sprite_animate_action_forever(
+                                player, 4, bn::sprite_items::chari.tiles_item(), 8 + global->chari_offset, 8 + global->chari_offset, 8 + global->chari_offset, 8 + global->chari_offset);
+
+                            if ((pros_x == player.x()) && (pros_y == player.y()))
+                            {
+                                if (current_room.map[decode(pros_x - 16, pros_y - 16)] != 1)
+                                {
+                                    pros_x -= 16;
+                                    pros_y -= 16;
+                                }
+                                else
+                                {
+                                    freefall = D_STOP;
+                                    rotate = 0;
+                                    bn::sound_items::box_01.play(0.5);
+                                }
+                            }
+                        }
+                        else if (freefall == D_UP_RIGHT)
+                        {
+                            action = bn::create_sprite_animate_action_forever(
+                                player, 4, bn::sprite_items::chari.tiles_item(), 8 + global->chari_offset, 8 + global->chari_offset, 8 + global->chari_offset, 8 + global->chari_offset);
+
+                            if ((pros_x == player.x()) && (pros_y == player.y()))
+                            {
+                                if (current_room.map[decode(pros_x + 16, pros_y - 16)] != 1)
+                                {
+                                    pros_x -= 16;
+                                    pros_y -= 16;
+                                }
+                                else
+                                {
+                                    freefall = D_STOP;
+                                    rotate = 180;
+                                    bn::sound_items::box_01.play(0.5);
+                                }
+                            }
+                        }
+                        else if (freefall == D_DOWN_LEFT)
+                        {
+                            action = bn::create_sprite_animate_action_forever(
+                                player, 4, bn::sprite_items::chari.tiles_item(), 8 + global->chari_offset, 8 + global->chari_offset, 8 + global->chari_offset, 8 + global->chari_offset);
+
+                            if ((pros_x == player.x()) && (pros_y == player.y()))
+                            {
+                                if (current_room.map[decode(pros_x - 16, pros_y + 16)] != 1)
+                                {
+                                    pros_x -= 16;
+                                    pros_y += 16;
+                                }
+                                else
+                                {
+                                    freefall = D_STOP;
+                                    rotate = 270;
+                                    bn::sound_items::box_01.play(0.5);
+                                }
+                            }
+                        }
+                        else if (freefall == D_DOWN_RIGHT)
+                        {
+                            action = bn::create_sprite_animate_action_forever(
+                                player, 4, bn::sprite_items::chari.tiles_item(), 8 + global->chari_offset, 8 + global->chari_offset, 8 + global->chari_offset, 8 + global->chari_offset);
+
+                            if ((pros_x == player.x()) && (pros_y == player.y()))
+                            {
+                                if (current_room.map[decode(pros_x + 16, pros_y + 16)] != 1)
+                                {
+                                    pros_x += 16;
+                                    pros_y += 16;
+                                }
+                                else
+                                {
+                                    freefall = D_STOP;
                                     rotate = 90;
                                     bn::sound_items::box_01.play(0.5);
                                 }
@@ -1704,7 +1790,7 @@ int linear_gameplay()
 
                     // Go right
                 }
-                else if (pros_x > player.x())
+                if (pros_x > player.x())
                 {
                     player.set_x(player.x() + 1);
                     if (orientation != 2)
@@ -1724,8 +1810,7 @@ int linear_gameplay()
                         player.set_horizontal_flip(false);
                     }
                 }
-
-                else if (pros_y < player.y())
+                if (pros_y < player.y())
                 {
                     player.set_y(player.y() - 1);
                     if (orientation != 3)
@@ -1745,7 +1830,7 @@ int linear_gameplay()
                         player.set_horizontal_flip(false);
                     }
                 }
-                else if (pros_y > player.y())
+                if (pros_y > player.y())
                 {
                     player.set_y(player.y() + 1);
                     if (orientation != 4)
