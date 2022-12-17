@@ -801,7 +801,7 @@ int linear_gameplay()
                        ? D_UP
                        : (freefall_y == D_DOWN)
                        ? D_DOWN
-                       : freefall));
+                       : D_STOP));
 
         // Handle buttons
         if (boss_battle)
@@ -1642,7 +1642,7 @@ int linear_gameplay()
                             {
                                 if (current_room.map[decode(pros_x + 16, pros_y - 16)] != 1)
                                 {
-                                    pros_x -= 16;
+                                    pros_x += 16;
                                     pros_y -= 16;
                                 }
                                 else
